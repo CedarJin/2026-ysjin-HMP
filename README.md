@@ -68,6 +68,7 @@ bash scripts/setup_hmp_assembly_gus_refs.sh
 sbatch scripts/submit_hmp_assembly_gus_array.sbatch
 bash scripts/review_hmp_assembly_gus_array.sh
 Rscript scripts/report_hmp_assembly_gus.R .
+Rscript scripts/plot_hmp_active_gus_heatmap_boxplot.R .
 ```
 
 Pilot the first five samples:

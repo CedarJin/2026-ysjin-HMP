@@ -1,11 +1,11 @@
 #!/usr/bin/env Rscript
-# Publication-style figures for HMP active-GUS abundance:
+# Publication-style figures for HMP assembly active-GUS abundance:
 #   (1) filled-tile TPM heatmap, unclustered (fixed biological order)
 #   (2) filled-tile TPM heatmap, hierarchically clustered (row + column dendrograms)
 #   (3) boxplot of genome-wide TPM per active GUS, one point per person
 #
-# Input : results/hmp_active_gus/report/active_gus_sample_by_reference.tsv
-# Output: results/hmp_active_gus/report/figures/05_* 06_* 07_*  (png + pdf)
+# Input : results/hmp_assembly_gus/report/active_gus_sample_by_reference.tsv
+# Output: results/hmp_assembly_gus/report/figures/05_* 06_* 07_*  (png + pdf)
 
 Sys.setenv(OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1")
 
@@ -25,8 +25,8 @@ args <- commandArgs(trailingOnly = TRUE)
 project_root <- if (length(args) >= 1) args[[1]] else getwd()
 project_root <- normalizePath(project_root, mustWork = TRUE)
 
-in_path  <- file.path(project_root, "results/hmp_active_gus/report/active_gus_sample_by_reference.tsv")
-fig_dir  <- file.path(project_root, "results/hmp_active_gus/report/figures")
+in_path  <- file.path(project_root, "results/hmp_assembly_gus/report/active_gus_sample_by_reference.tsv")
+fig_dir  <- file.path(project_root, "results/hmp_assembly_gus/report/figures")
 dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)
 
 dat <- read_tsv(in_path, show_col_types = FALSE) %>%
