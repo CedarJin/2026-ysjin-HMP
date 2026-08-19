@@ -1,0 +1,31 @@
+sample_list: "data/HMP_GUS/manifests/HMASM_WGS_stool_SRS_samples.txt"
+hmgI_gene_archive: "data/HMP_GUS/HMGI/HMGI-stool-gene-seqs.tar.gz"
+hmasm_read_dir: "data/HMP_GUS/HMASM/WGS/stool"
+results_dir: "results/hmp_active_gus"
+reference_faa: "results/reference/active_gus.faa"
+reference_metadata: "results/reference/active_gus_metadata.tsv"
+min_identity: 95.0
+min_query_cov: 0.9
+min_subject_cov: 0.9
+max_evalue: 1.0e-5
+max_target_seqs: 25
+read_pair_limit: 0
+repair_samples:
+  - "SRS023176"
+sra_rebuild:
+  sample: "SRS023176"
+  raw_dir: "data/HMP_GUS/SRA/SRS023176/raw"
+  target_read_id: "61GUNAAXX100507:1:88:17511:9590"
+  runs:
+    SRR059900: 37539446
+    SRR059901: 37249491
+  dedup_min_identical_bases: 5
+  dedup_max_diff_rate: 0.03
+  dedup_min_mean_quality: 20
+  trim_quality: 3
+  minimum_trimmed_length: 60
+threads: 8
+threads_bowtie2: 8
+threads_featurecounts: 8
+threads_diamond: 8
+tool_bin_dir: "/home/jys0914/2026-ysjin-gus/envs/gus-map/bin"

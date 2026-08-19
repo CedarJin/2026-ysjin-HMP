@@ -1,0 +1,83 @@
+# --- pipeline inputs / outputs (do not upload) ---
+/data/
+/results/
+/logs/
+/reports/
+
+# --- pipeline A only (HMGI gene-catalog search / counts / TPM) ---
+# Read-prep scripts are shared with pipeline B (B consumes
+# results/hmp_active_gus/reads and repaired_reads for SRS023176):
+#   extract_hmp_read_pair.py, repair_hmp_fastq_pairs.py,
+#   validate_hmp_fastq_pairs.py, hmp_sequence_dedup_trim.cpp,
+#   submit_SRS023176_from_sra_active_gus.sbatch,
+#   submit_SRS023176_hmp_preprocess_active_gus.sbatch
+scripts/prepare_hmgi_gene_features.py
+scripts/count_hmp_gene_alignments.py
+scripts/summarize_hmp_active_gus_hits.py
+scripts/calculate_hmp_active_gus_abundance.py
+scripts/merge_hmp_active_gus_abundance.py
+scripts/check_fastq_after_read.py
+
+# --- snakemake / local caches ---
+.snakemake/
+.cache/
+.R/
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# --- python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+
+# --- conda / renv ---
+.conda/
+conda-env/
+renv/library/
+renv/staging/
+
+# --- slurm / cluster ---
+*.out
+*.err
+slurm-*.out
+
+# --- editor / OS ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# --- large sequence / alignment files (safety net) ---
+# keep tiny fixtures under tests/
+*.fastq
+*.fq
+*.fastq.gz
+*.fq.gz
+*.fasta
+*.fa
+*.fna
+*.faa
+*.fasta.gz
+*.bam
+*.sam
+*.cram
+*.bai
+*.csi
+*.crai
+*.vcf
+*.vcf.gz
+*.bcf
+*.sra
+*.h5
+*.hdf5
+*.sqlite
+*.db
+!tests/data/*.fastq
+!tests/data/*.fq
