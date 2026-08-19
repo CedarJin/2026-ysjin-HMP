@@ -17,6 +17,12 @@ scripts/summarize_hmp_active_gus_hits.py
 scripts/calculate_hmp_active_gus_abundance.py
 scripts/merge_hmp_active_gus_abundance.py
 scripts/check_fastq_after_read.py
+scripts/submit_hmp_active_gus.sbatch
+scripts/report_hmp_active_gus.R
+scripts/plot_hmp_active_gus_heatmap_boxplot.R
+workflow/hmp_active_gus.smk
+config/hmp_active_gus.yaml
+config/hmp_active_gus_smoketest_samples.txt
 
 # --- snakemake / local caches ---
 .snakemake/
