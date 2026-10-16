@@ -1,17 +1,16 @@
 # Active GUS abundance in HMP stool metagenomes
 
-This project quantifies genes matching the **active β-glucuronidase (GUS) reference set** in 139 Human Microbiome Project (HMP) stool shotgun metagenomes. Abundance is reported as **RPKM**, normalized by gene length and the sum of all gene counts in each sample.
+This project quantifies genes matching the **active β-glucuronidase (GUS) reference set** in 139 Human Microbiome Project (HMP) stool shotgun metagenomes. Abundance is reported as **RPKM**, normalized by gene length and the total number of reads mapped to each sample-specific assembly.
 
-The working analysis requires **≥95% amino-acid identity and ≥90% query and reference coverage** (`pident95_cov90`). A match identifies a homolog of an experimentally active reference protein; it does not establish that the sample-derived protein has the same activity.
+The working analysis requires **≥95% amino-acid identity and ≥90% query and reference coverage** (`pident95_cov90`). A match identifies a homolog of an experimentally active reference protein.
 
 ## Samples and input data
 
-- The cohort contains 139 SRS sample IDs listed in `data/HMP_GUS/manifests/HMASM_WGS_stool_SRS_samples.txt`.
+- The cohort comprises the 139 HMP stool metagenomic samples used to establish the GUS Atlas, with SRS sample IDs listed in `data/HMP_GUS/manifests/HMASM_WGS_stool_SRS_samples.txt`.
 - Paired-end reads come from HMP HMASM stool WGS packages, using the HMP-preprocessed `denovo_duplicates_marked.trimmed` FASTQ pairs.
-- Sample-specific gene sequences come from the HMP HMGI stool gene archive, `data/HMP_GUS/HMGI/HMGI-stool-gene-seqs.tar.gz`.
+- Coding sequences are predicted from sample-specific assemblies generated from these reads.
 - `SRS023176` requires repaired or rebuilt read pairs because its public HMASM package has broken pairing. The local configuration routes this sample to the prepared replacement reads.
 
-The RPKM outputs described below use each sample's HMGI gene sequences as the mapping reference. Input paths, sample selection, search thresholds, and read-repair settings are recorded in `config/hmp_active_gus.yaml`.
 
 ## Active GUS references
 
@@ -31,84 +30,72 @@ The active set comprises the first 11 entries of Table S3 in Zhang et al. (2026)
 | `WP_007841259` | B. dorei |
 | `WP_217761416` | P. copri |
 
-Reference sequences and annotations are stored locally in `results/reference/active_gus.faa` and `results/reference/active_gus_metadata.tsv`. Source labels describe the reference proteins, not independently confirmed species assignments for each sample-derived gene.
+Reference sequences and annotations are supplied by the companion `2026-ysjin-gus` checkout through the `active_faa` and `active_metadata` paths in `config/hmp_assembly_gus.yaml`.
 
 ## Analysis workflow
 
 ```text
-HMP HMGI sample-specific gene nucleotide sequences
-  → translate genes and prepare gene-coordinate annotations
-  → DIAMOND blastp against the 11 active GUS references
-  → identity/coverage filtering and one best hit per gene
-
-HMP HMASM preprocessed paired-end reads
-  → Bowtie2 mapping to the same sample's HMGI gene sequences
-  → sorted and indexed BAM
-  → mapped alignment counts for every gene
-  → combine active GUS hits, gene lengths, and counts
-  → gene-level RPKM
+HMP-preprocessed paired-end reads (139 stool metagenomes)
+  → MEGAHIT v1.2.9 assembly (retain contigs ≥1,000 bp)
+  → Prodigal v2.6.3 coding-sequence prediction (metagenomic mode)
+  → Bowtie 2 v2.5.5 mapping of reads back to sample-specific assemblies
+  → SAMtools v1.23.1 sorting of alignments
+  → featureCounts v2.1.1 assignment of reads to coding sequences
+  → DIAMOND BLASTp v2.1.11 screening of predicted proteins against active GUS references
+  → filter hits (identity ≥95%, query and subject coverage ≥90%, E-value ≤1e-5)
+  → retain the highest-bit-score qualifying match per gene
+  → calculate gene-level RPKM using total reads mapped to the sample-specific assembly
   → sum RPKM by active GUS reference within each sample
 ```
 
-Filtering uses amino-acid identity ≥95%, alignment length / query length ≥90%, alignment length / reference length ≥90%, and e-value ≤1e-5. Among passing active-reference hits, the highest-bitscore hit is retained for each gene so that a gene contributes to one reference assignment.
+HMP-preprocessed paired-end reads were assembled separately for each sample using MEGAHIT, retaining contigs of at least 1,000 bp. Prodigal predicted coding sequences in metagenomic mode. Reads were mapped back to the corresponding sample-specific assembly using Bowtie 2, sorted using SAMtools, and assigned to coding sequences using featureCounts.
 
-The local workflow is defined in `workflow/hmp_active_gus.smk`. Gene preparation and hit filtering are implemented in `scripts/prepare_hmgi_gene_features.py` and `scripts/summarize_hmp_active_gus_hits.py`.
+Predicted protein sequences were screened against the active GUS references using DIAMOND BLASTp. Qualifying hits required ≥95% amino-acid identity, ≥90% query and subject coverage, and an E-value ≤10⁻⁵. The highest-bit-score qualifying match was retained per gene, giving each gene one active GUS reference assignment.
 
-Counts are generated by `scripts/count_hmp_gene_alignments.py`, which reads mapped alignment counts from `samtools idxstats` and writes a featureCounts-compatible table. These are alignment counts against gene references; the paired-end inputs are not collapsed into one count per fragment by this script.
+The assembly, mapping, coding-sequence counting, and active GUS screening workflow is defined in `workflow/hmp_assembly_gus.smk`, with settings in `config/hmp_assembly_gus.yaml`.
 
 ## RPKM quantification
 
-For gene *g* in sample *s*:
+For GUS gene *g* in sample *s*:
 
 ```text
-RPKM(g, s) = raw_count(g, s) × 10^9
-             / (gene_length_bp(g) × sum of all gene counts in sample s)
+RPKM(g, s) = C(g, s) × 10^9 / (L(g) × N(s))
 ```
 
-- `raw_count`: mapped alignment count assigned to the gene.
-- `gene_length_bp`: nucleotide length of the sample-derived gene.
-- `library_size`: sum of counts across all genes in the sample's count table, including genes without active GUS hits.
+| Symbol | Definition |
+| --- | --- |
+| `C(g, s)` | Number of reads assigned to the GUS gene by featureCounts |
+| `L(g)` | Coding-sequence length of the GUS gene in base pairs |
+| `N(s)` | Total number of reads mapped to the corresponding sample-specific assembly |
 
-The normalization denominator therefore measures the counted gene-mapped library. It is not the total number of input FASTQ reads or the count restricted to active GUS genes.
+The denominator uses all reads mapped to the sample-specific assembly, including mapped reads that are not assigned to a coding sequence. It must therefore be obtained from the assembly read mappings rather than calculated by summing gene counts.
 
-For each active GUS reference, gene-level RPKM values are summed within a sample. The resulting matrix contains reference IDs and source labels followed by one column per sample; a reference with no contributing hit in a sample receives zero. RPKM calculation and matrix aggregation are implemented in `scripts/merge_hmp_active_gus_abundance.py`.
+Gene-level RPKM values are summed for genes assigned to the same active GUS reference within each sample to obtain reference-level abundance.
 
-## Key outputs
+## Analysis files
 
-Outputs are stored under `results/hmp_active_gus/`:
+Assembly-based analysis files are stored under `results/hmp_assembly_gus/`:
 
 | Relative path | Contents |
 | --- | --- |
-| `counts/{SRS}.featurecounts.txt` | Counts and lengths for all genes, in featureCounts-compatible format |
-| `summary/{SRS}.active_gus_best_hits.tsv` | Best passing active GUS reference hit for each gene |
-| `summary/{SRS}.active_gus_abundance.tsv` | Per-sample gene abundance inputs used for RPKM recalculation |
-| `summary/active_gus_abundance_all_samples.tsv` | Combined gene-level abundance table, including `rpkm_genome_wide` |
-| `summary/active_gus_rpkm_genome_wide_matrix.tsv` | Active GUS reference × sample RPKM matrix |
+| `mapping/{SRS}.min1000.sorted.bam` | Reads mapped to the sample-specific assembly, sorted by coordinate |
+| `prodigal/{SRS}.min1000.gff` | Predicted coding-sequence coordinates |
+| `prodigal/{SRS}.min1000.faa` | Predicted protein sequences used for screening |
+| `counts/{SRS}.min1000.featurecounts.txt` | Reads assigned to predicted coding sequences and their lengths |
+| `summary/pident95_cov90/hits/{SRS}.min1000.active_gus_best_hits.tsv` | Highest-bit-score qualifying active GUS match per gene |
+| `summary/pident95_cov90/abundance/{SRS}.min1000.active_gus_abundance.tsv` | Gene-level active GUS abundance output from the assembly workflow |
 
-The `genome_wide` field and filename label indicates normalization across all counted genes in the sample.
-
-## Recalculate RPKM from existing results
-
-With the existing per-sample abundance tables, count tables, and cohort summary files in place, submit the recalculation from the repository root:
-
-```bash
-mkdir -p logs
-sbatch scripts/submit_hmp_active_gus_rpkm.sbatch
-```
-
-This job runs `scripts/recalculate_hmp_active_gus_rpkm.py`. It verifies saved gene counts and library sizes against the count tables, rebuilds the RPKM matrix, and updates the combined abundance table. It preserves the sample and reference ordering of the existing matrix and checks each aggregated RPKM value against the gene-level calculation.
-
-This is a recalculation step for completed local results; it requires the existing abundance matrix for ordering and does not rerun read mapping or protein searches.
+The mapped-read total for RPKM normalization comes from the corresponding assembly mapping. Gene counts and coding-sequence lengths come from the featureCounts output.
 
 ## Repository layout
 
 ```text
-config/       Sample selection and workflow configuration
-workflow/     Snakemake analysis workflows
-scripts/      Gene preparation, mapping/counting, hit filtering, and RPKM summaries
-data/        Local HMP read packages, gene archive, and sample manifests
-results/      Local reference sequences, alignments, counts, and abundance tables
+config/       Sample selection and assembly workflow configuration
+workflow/     Assembly, mapping, coding-sequence counting, and GUS screening
+scripts/      Reference setup, job submission, hit filtering, and reporting
+data/         Local HMP read packages and sample manifests
+results/      Local assemblies, predicted genes, alignments, counts, and abundance tables
 logs/         Slurm job logs
 ```
 
-Large input and result files are stored locally and are excluded from Git. The HMGI workflow, configuration, and several supporting scripts are also currently excluded by `.gitignore`; the paths above describe the working analysis checkout and are not all available in a fresh clone.
+Large input and result files are stored locally and are excluded from Git. The assembly workflow uses reference files and shared abundance scripts from the companion `2026-ysjin-gus` checkout, configured through `gus_root` and the reference paths in `config/hmp_assembly_gus.yaml`.
